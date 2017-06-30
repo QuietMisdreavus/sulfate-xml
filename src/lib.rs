@@ -9,8 +9,11 @@
 extern crate xml;
 
 use std::borrow::{Borrow, Cow};
-use std::io::Write;
+use std::io::{Read, Write};
 
+use xml::name::OwnedName;
+use xml::reader::{self, EventReader};
+use xml::reader::XmlEvent as ReaderEvent;
 use xml::writer::{self, EventWriter, XmlEvent};
 
 /// A representation of an XML element.
@@ -22,6 +25,7 @@ pub struct Element<'a> {
 }
 
 /// A representation of the name of an XML element.
+#[derive(Debug, PartialEq)]
 pub struct Name<'a> {
     /// The "local name of the element.
     pub local_name: Cow<'a, str>,
@@ -31,6 +35,16 @@ pub struct Name<'a> {
     /// is present but `prefix` is not, the namespace corresponds to the "default" namespace for
     /// this element and its children.
     pub prefix: Option<Cow<'a, str>>,
+}
+
+impl From<OwnedName> for Name<'static> {
+    fn from(from: OwnedName) -> Name<'static> {
+        Name {
+            local_name: from.local_name.into(),
+            namespace: from.namespace.map(|ns| ns.into()),
+            prefix: from.prefix.map(|p| p.into()),
+        }
+    }
 }
 
 /// A representation of the types of content available to an XML element.
@@ -137,5 +151,53 @@ impl<'a> Element<'a> {
         sink.write(XmlEvent::end_element())?;
 
         Ok(())
+    }
+
+    ///Reads an element from the given stream.
+    pub fn from_stream<R: Read>(stream: R) -> reader::Result<Element<'static>> {
+        let reader = EventReader::new(stream);
+
+        let mut elem_stack = Vec::<Element<'static>>::new();
+
+        for event in reader {
+            let event = event?;
+
+            match event {
+                ReaderEvent::StartElement { name, .. } => {
+                    //NOTE: if/when i support attributes, that .. is hiding an `attributes` field
+                    let elem = Element {
+                        name: name.into(),
+                        content: vec![],
+                    };
+                    elem_stack.push(elem);
+                }
+                ReaderEvent::EndElement { name } => {
+                    let mut child = None;
+                    let name: Name = name.into();
+                    for i in (0..elem_stack.len()).rev() {
+                        if elem_stack[i].name == name {
+                            child = Some(elem_stack.remove(i));
+                            break;
+                        }
+                    }
+
+                    if let (Some(child), Some(head)) = (child, elem_stack.last_mut()) {
+                        head.push_child(child);
+                    }
+                }
+                ReaderEvent::Characters(text) => {
+                    if let Some(head) = elem_stack.last_mut() {
+                        head.push_text(text);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(head) = elem_stack.pop() {
+            Ok(head)
+        } else {
+            Err((&xml::common::TextPosition { row: 0, column: 0 }, "empty stream").into())
+        }
     }
 }
