@@ -17,6 +17,7 @@ use xml::reader::XmlEvent as ReaderEvent;
 use xml::writer::{self, EventWriter, XmlEvent};
 
 /// A representation of an XML element.
+#[derive(Debug)]
 pub struct Element<'a> {
     /// The name of the element.
     pub name: Name<'a>,
@@ -48,6 +49,7 @@ impl From<OwnedName> for Name<'static> {
 }
 
 /// A representation of the types of content available to an XML element.
+#[derive(Debug)]
 pub enum ElemContent<'a> {
     /// Text content.
     Text(Cow<'a, str>),
