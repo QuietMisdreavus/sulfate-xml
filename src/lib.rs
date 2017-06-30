@@ -155,7 +155,14 @@ impl<'a> Element<'a> {
         Ok(())
     }
 
-    ///Reads an element from the given stream.
+    ///Writes this `Element` into the given stream.
+    pub fn into_stream<W: Write>(&self, stream: W) -> writer::Result<()> {
+        let mut writer = EventWriter::new(stream);
+
+        self.serialize(&mut writer)
+    }
+
+    ///Reads an `Element` from the given stream.
     pub fn from_stream<R: Read>(stream: R) -> reader::Result<Element<'static>> {
         let reader = EventReader::new(stream);
 
