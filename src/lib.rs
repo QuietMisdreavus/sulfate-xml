@@ -169,6 +169,7 @@ impl<'a> Element<'a> {
         let reader = EventReader::new(stream);
 
         let mut elem_stack = Vec::<Element<'static>>::new();
+        let mut ret = None;
 
         for event in reader {
             let event = event?;
@@ -192,8 +193,13 @@ impl<'a> Element<'a> {
                         }
                     }
 
-                    if let (Some(child), Some(head)) = (child, elem_stack.last_mut()) {
-                        head.push_child(child);
+                    if let Some(child) = child {
+                        if let Some(head) = elem_stack.last_mut() {
+                            head.push_child(child);
+                        } else {
+                            assert!(ret.is_none());
+                            ret = Some(child);
+                        }
                     }
                 }
                 ReaderEvent::Characters(text) => {
@@ -205,7 +211,7 @@ impl<'a> Element<'a> {
             }
         }
 
-        if let Some(head) = elem_stack.pop() {
+        if let Some(head) = ret {
             Ok(head)
         } else {
             Err((&xml::common::TextPosition { row: 0, column: 0 }, "empty stream").into())
