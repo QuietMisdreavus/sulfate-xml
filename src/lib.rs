@@ -10,11 +10,12 @@ extern crate xml;
 
 use std::borrow::{Borrow, Cow};
 use std::io::{Read, Write};
+use std::fmt;
 
 use xml::name::OwnedName;
 use xml::reader::{self, EventReader};
 use xml::reader::XmlEvent as ReaderEvent;
-use xml::writer::{self, EventWriter, XmlEvent};
+use xml::writer::{self, EventWriter, XmlEvent, EmitterConfig};
 
 /// A representation of an XML element.
 #[derive(Debug)]
@@ -127,7 +128,8 @@ impl<'a> Element<'a> {
     pub fn serialize<W: Write>(&self, sink: &mut EventWriter<W>) -> writer::Result<()> {
         match (&self.name.namespace, &self.name.prefix) {
             (&Some(ref ns), &Some(ref prefix)) => {
-                sink.write(XmlEvent::start_element(self.name.local_name.borrow())
+                let full_name = format!("{}:{}", prefix, self.name.local_name);
+                sink.write(XmlEvent::start_element(&*full_name)
                                     .ns(prefix.borrow(), ns.borrow()))?;
             },
             (&Some(ref ns), &None) => {
@@ -208,5 +210,21 @@ impl<'a> Element<'a> {
         } else {
             Err((&xml::common::TextPosition { row: 0, column: 0 }, "empty stream").into())
         }
+    }
+}
+
+impl<'a> fmt::Display for Element<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let config = EmitterConfig::new().perform_indent(f.alternate());
+
+        let mut buf = Vec::<u8>::new();
+        {
+            let mut writer = EventWriter::new_with_config(&mut buf, config);
+
+            self.serialize(&mut writer).map_err(|_| fmt::Error)?;
+        }
+        let result = String::from_utf8(buf).map_err(|_| fmt::Error)?;
+
+        f.write_str(&result)
     }
 }
