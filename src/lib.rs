@@ -168,6 +168,14 @@ impl<'a> Element<'a> {
         }
     }
 
+    ///Reads an `Element` from the given string.
+    ///
+    ///This is a convenience function that calls `from_stream` on the given string by using
+    ///`str::as_bytes` to get a byte slice.
+    pub fn from_string(s: &str) -> reader::Result<Element<'static>> {
+        Element::from_stream(s.as_bytes())
+    }
+
     /// Add the given text content to the `Element`.
     pub fn push_text<T: Into<Cow<'a, str>>>(&mut self, content: T) {
         self.content.push(ElemContent::Text(content.into()));
