@@ -66,8 +66,11 @@ pub trait ToXml {
 
 /// Helper trait to convert an `Element` to a given type.
 pub trait FromXml: Sized {
+    /// What errors can occur while converting from the XML?
+    type Error;
+
     /// Create an instance of `Self` from the given `Element`.
-    fn from_xml(&Element) -> Self;
+    fn from_xml(&Element) -> Result<Self, Self::Error>;
 }
 
 impl<'a> Element<'a> {
