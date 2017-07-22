@@ -219,6 +219,13 @@ impl<'a> Element<'a> {
     }
 }
 
+/// Display impl that formats this `Element` into XML and writes it to the given writer.
+///
+/// Providing the "alternate" flag by using a formatting flag like `"{:#}"` will pretty-print the
+/// XML by adding line breaks and indentation.
+///
+/// Performance note: Due to the design of the `xml-rs` `EmitterWriter`, this impl writes the XML
+/// into a new Vec<u8> before writing it to the stream.
 impl<'a> fmt::Display for Element<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let config = EmitterConfig::new().perform_indent(f.alternate());
