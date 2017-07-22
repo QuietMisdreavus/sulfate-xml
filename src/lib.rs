@@ -114,56 +114,6 @@ impl<'a> Element<'a> {
         }
     }
 
-    /// Add the given text content to the `Element`.
-    pub fn push_text<T: Into<Cow<'a, str>>>(&mut self, content: T) {
-        self.content.push(ElemContent::Text(content.into()));
-    }
-
-    /// Add a new child `Element` to this `Element`'s children.
-    pub fn push_child(&mut self, child: Element<'a>) {
-        self.content.push(ElemContent::Child(child));
-    }
-
-    /// Serialize this `Element` to the given writer.
-    pub fn serialize<W: Write>(&self, sink: &mut EventWriter<W>) -> writer::Result<()> {
-        match (&self.name.namespace, &self.name.prefix) {
-            (&Some(ref ns), &Some(ref prefix)) => {
-                let full_name = format!("{}:{}", prefix, self.name.local_name);
-                sink.write(XmlEvent::start_element(&*full_name)
-                                    .ns(prefix.borrow(), ns.borrow()))?;
-            },
-            (&Some(ref ns), &None) => {
-                sink.write(XmlEvent::start_element(self.name.local_name.borrow())
-                                    .default_ns(ns.borrow()))?;
-            },
-            _ => {
-                sink.write(XmlEvent::start_element(self.name.local_name.borrow()))?;
-            }
-        }
-
-        for item in &self.content {
-            match item {
-                &ElemContent::Text(ref text) => {
-                    sink.write(text.borrow())?;
-                },
-                &ElemContent::Child(ref child) => {
-                    child.serialize(sink)?;
-                },
-            }
-        }
-
-        sink.write(XmlEvent::end_element())?;
-
-        Ok(())
-    }
-
-    ///Writes this `Element` into the given stream.
-    pub fn into_stream<W: Write>(&self, stream: W) -> writer::Result<()> {
-        let mut writer = EventWriter::new(stream);
-
-        self.serialize(&mut writer)
-    }
-
     ///Reads an `Element` from the given stream.
     pub fn from_stream<R: Read>(stream: R) -> reader::Result<Element<'static>> {
         let reader = EventReader::new(stream);
@@ -216,6 +166,56 @@ impl<'a> Element<'a> {
         } else {
             Err((&xml::common::TextPosition { row: 0, column: 0 }, "empty stream").into())
         }
+    }
+
+    /// Add the given text content to the `Element`.
+    pub fn push_text<T: Into<Cow<'a, str>>>(&mut self, content: T) {
+        self.content.push(ElemContent::Text(content.into()));
+    }
+
+    /// Add a new child `Element` to this `Element`'s children.
+    pub fn push_child(&mut self, child: Element<'a>) {
+        self.content.push(ElemContent::Child(child));
+    }
+
+    /// Serialize this `Element` to the given writer.
+    fn serialize<W: Write>(&self, sink: &mut EventWriter<W>) -> writer::Result<()> {
+        match (&self.name.namespace, &self.name.prefix) {
+            (&Some(ref ns), &Some(ref prefix)) => {
+                let full_name = format!("{}:{}", prefix, self.name.local_name);
+                sink.write(XmlEvent::start_element(&*full_name)
+                                    .ns(prefix.borrow(), ns.borrow()))?;
+            },
+            (&Some(ref ns), &None) => {
+                sink.write(XmlEvent::start_element(self.name.local_name.borrow())
+                                    .default_ns(ns.borrow()))?;
+            },
+            _ => {
+                sink.write(XmlEvent::start_element(self.name.local_name.borrow()))?;
+            }
+        }
+
+        for item in &self.content {
+            match item {
+                &ElemContent::Text(ref text) => {
+                    sink.write(text.borrow())?;
+                },
+                &ElemContent::Child(ref child) => {
+                    child.serialize(sink)?;
+                },
+            }
+        }
+
+        sink.write(XmlEvent::end_element())?;
+
+        Ok(())
+    }
+
+    ///Writes this `Element` into the given stream.
+    pub fn into_stream<W: Write>(&self, stream: W) -> writer::Result<()> {
+        let mut writer = EventWriter::new(stream);
+
+        self.serialize(&mut writer)
     }
 }
 
