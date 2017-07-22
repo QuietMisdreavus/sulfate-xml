@@ -217,6 +217,21 @@ impl<'a> Element<'a> {
 
         self.serialize(&mut writer)
     }
+
+    ///Returns the first child element that matches the given predicate.
+    pub fn first_child_where<'s, F: FnMut(&Element) -> bool>(&'s self, mut pred: F)
+        -> Option<&'s Element<'a>>
+    {
+        for child in &self.content {
+            if let &ElemContent::Child(ref ch) = child {
+                if pred(ch) {
+                    return Some(ch);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 /// Display impl that formats this `Element` into XML and writes it to the given writer.
