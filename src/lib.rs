@@ -27,7 +27,7 @@ pub struct Element<'a> {
 }
 
 /// A representation of the name of an XML element.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Name<'a> {
     /// The "local name of the element.
     pub local_name: Cow<'a, str>,
@@ -37,6 +37,50 @@ pub struct Name<'a> {
     /// is present but `prefix` is not, the namespace corresponds to the "default" namespace for
     /// this element and its children.
     pub prefix: Option<Cow<'a, str>>,
+}
+
+impl<'a> Name<'a> {
+    /// Creates a new `Name` with no namespace information.
+    pub fn new_no_ns<T: Into<Cow<'a, str>>>(local_name: T) -> Name<'a> {
+        Name {
+            local_name: local_name.into(),
+            namespace: None,
+            prefix: None,
+        }
+    }
+
+    /// Create a new `Name` with a namespace URL and no prefix.
+    pub fn new_default_ns<L, N>(local: L, ns: N) -> Name<'a>
+        where L: Into<Cow<'a, str>>,
+              N: Into<Cow<'a, str>>,
+    {
+        Name {
+            local_name: local.into(),
+            namespace: Some(ns.into()),
+            prefix: None,
+        }
+    }
+
+    /// Create a new `Name` with the given local name, namespace URL, and prefix.
+    pub fn new<L, N, P>(local: L, ns: N, prefix: P) -> Name<'a>
+        where L: Into<Cow<'a, str>>,
+              N: Into<Cow<'a, str>>,
+              P: Into<Cow<'a, str>>
+    {
+        Name {
+            local_name: local.into(),
+            namespace: Some(ns.into()),
+            prefix: Some(prefix.into()),
+        }
+    }
+}
+
+/// The `PartialEq` implementation for `Name` ignores the `prefix`, only comparing the `local_name`
+/// and `namespace` URL.
+impl<'a> PartialEq for Name<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.local_name == other.local_name && self.namespace == other.namespace
+    }
 }
 
 impl From<OwnedName> for Name<'static> {
@@ -75,13 +119,9 @@ pub trait FromXml: Sized {
 
 impl<'a> Element<'a> {
     /// Create an empty `Element` with no namespace in its name.
-    pub fn new<T: Into<Cow<'a, str>>>(name: T) -> Element<'a> {
+    pub fn new_no_ns<T: Into<Cow<'a, str>>>(name: T) -> Element<'a> {
         Element {
-            name: Name {
-                local_name: name.into(),
-                namespace: None,
-                prefix: None,
-            },
+            name: Name::new_no_ns(name),
             content: Vec::new(),
         }
     }
@@ -92,27 +132,19 @@ impl<'a> Element<'a> {
                   N: Into<Cow<'a, str>>
     {
         Element {
-            name: Name {
-                local_name: name.into(),
-                namespace: Some(ns.into()),
-                prefix: None,
-            },
+            name: Name::new_default_ns(name, ns),
             content: Vec::new(),
         }
     }
 
     /// Create an empty `Element` with the given namespace and prefix.
-    pub fn new_ns_prefix<T, N, P>(name: T, ns: N, prefix: P) -> Element<'a>
+    pub fn new<T, N, P>(name: T, ns: N, prefix: P) -> Element<'a>
         where T: Into<Cow<'a, str>>,
               N: Into<Cow<'a, str>>,
               P: Into<Cow<'a, str>>
     {
         Element {
-            name: Name {
-                local_name: name.into(),
-                namespace: Some(ns.into()),
-                prefix: Some(prefix.into()),
-            },
+            name: Name::new(name, ns, prefix),
             content: Vec::new(),
         }
     }
